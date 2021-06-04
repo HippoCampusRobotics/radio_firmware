@@ -20,13 +20,13 @@
 #define TDM_LINK_UPDATE_PERIOD 31250
 
 #define TDM_SWITCH_NEXT_SLOT(slot, slot_count) \
-    {                                          \
+    do {                                       \
         if (slot + 1 == slot_count) {          \
             slot = 0;                          \
         } else {                               \
             slot++;                            \
         }                                      \
-    }
+    } while (0)
 // 2 crc + 1 len + 2 sync + 1 header = 6 bytes
 #define TDM_OVERHEAD_BYTES 6
 
@@ -42,16 +42,18 @@
 #define TDM_TX_DELAY_TICKS 13
 
 inline static void tdm_extract_trailer(register uint8_t packet_len);
+inline void tdm_populate_trailer();
 
-__bit _tdm_connected = false;
+__bit _tdm_in_sync = false;
 __bit _tdm_config_pin_state = false;
 __bit _tdm_is_base_node;
 __bit _tdm_is_in_silence_period = true;
 __bit _tdm_led_radio_state = LED_OFF;
 __bit _tdm_led_bootloader_state = LED_OFF;
 __bit _tdm_packet_sent = false;
-static __bit _sync_received = false;
-static __data uint8_t _sync_count = 0;
+static __data uint8_t _tdm_sync_hops;
+static __bit _tdm_sync_received = false;
+static __data uint8_t _tdm_sync_count = 0;
 
 __data struct tdm_trailer_s _tdm_trailer;
 
@@ -93,8 +95,7 @@ void tdm_init() {
 }
 
 inline static void tdm_extract_trailer(register uint8_t packet_len) {
-    memcpy(&_tdm_trailer, _tdm_buffer + packet_len,
-           sizeof(_tdm_trailer));
+    memcpy(&_tdm_trailer, _tdm_buffer + packet_len, sizeof(_tdm_trailer));
 }
 
 void handle_received_packet(register uint8_t packet_len) {
@@ -102,18 +103,22 @@ void handle_received_packet(register uint8_t packet_len) {
     packet_len -= sizeof(_tdm_trailer);
     tdm_extract_trailer(packet_len);
     if (TDM_IS_SYNC(_tdm_trailer.node_id)) {
-        // HANDLE SYNC PACKAGE
-        if (!(++_sync_count)) {
-            _sync_count = 0xFF;
+        /* handle base node's sync package in the dedicated sync slot -> best
+         * sync we can get */
+        if (!(++_tdm_sync_count)) {
+            _tdm_sync_count = 0xFF;
         }
         _tdm_t_now = timer2_tick();
         _tdm_t_last = _tdm_t_now;
+        PIN_CONFIG = false;
         dt = _tdm_t_now - radio_get_arrival_time();
         _tdm_t_remaining = _tdm_pkt_timing.slot_ticks - 152 - dt -
                            _tdm_pkt_timing.silence_ticks;
-        _sync_received = true;
+        _tdm_sync_received = true;
+        _tdm_sync_hops = 1;
         _tdm_current_slot = TDM_SYNC_SLOT(_tdm_slot_count);
-        _tdm_connected = true;
+        // TODO: uncomment for normal function
+        _tdm_in_sync = true;
         radio_set_mode_receive();
     } else if (packet_len && !_cfg_mode_active) {
         // HANDLE USER DATA
@@ -133,7 +138,7 @@ void tdm_update_slot() {
     if (dt >= _tdm_t_remaining) {
         dt -= _tdm_t_remaining;
         _tdm_t_remaining = _tdm_pkt_timing.slot_ticks - dt;
-        if (_tdm_connected) {
+        if (_tdm_in_sync) {
             _tdm_packet_sent = false;
             TDM_SWITCH_NEXT_SLOT(_tdm_current_slot, _tdm_slot_count);
             tdm_indicate_slot_change();
@@ -152,25 +157,31 @@ void tdm_update_slot() {
 }
 
 inline void tdm_update_link() {
-    if (_sync_received || _tdm_is_base_node) {
-        _sync_received = false;
+    if (_tdm_sync_received || _tdm_is_base_node) {
+        _tdm_sync_received = false;
         LED_RADIO = LED_ON;
     } else {
-        _sync_count = 0;
+        _tdm_sync_count = 0;
         LED_RADIO = _tdm_led_radio_state;
         _tdm_led_radio_state = !_tdm_led_radio_state;
-        _tdm_connected = false;
+        _tdm_in_sync = false;
     }
 }
 
 void tdm_transmit_sync() {
-    // if (test_counter++ < 10) {
-    //     return;
-    // }
-    // test_counter = 0;
     _tdm_trailer.node_id = TDM_SYNC_FLAG;
+    _tdm_trailer.sync_hops = 0;
     memcpy(_tdm_buffer, &_tdm_trailer, sizeof(_tdm_trailer));
     radio_transmit(sizeof(_tdm_trailer), _tdm_buffer);
+}
+
+inline void tdm_populate_trailer() {
+    if (_g_node_id == TDM_BASE_NODE) {
+        _tdm_trailer.sync_hops = 0;
+    } else {
+        _tdm_trailer.sync_hops = _tdm_sync_hops;
+    }
+    _tdm_trailer.node_id = _g_node_id;
 }
 
 void tdm_run() {
@@ -182,7 +193,7 @@ void tdm_run() {
     _tdm_t_last = t_link_update = _tdm_t_now;
     _tdm_t_remaining = _tdm_pkt_timing.slot_ticks;
     _tdm_t_next_slot = _tdm_t_now + _tdm_t_remaining;
-    _tdm_connected = _tdm_is_base_node;
+    _tdm_in_sync = _tdm_is_base_node;
     while (true) {
         cfg_handle_cmd();
         if (_tdm_t_now - t_link_update > TDM_LINK_UPDATE_PERIOD) {
@@ -192,18 +203,21 @@ void tdm_run() {
         pkt_update_buffer();
         _tdm_t_now = timer2_tick();
         tdm_update_slot();
-        if (_tdm_current_slot == _g_node_id && !_tdm_packet_sent && !_tdm_is_in_silence_period) {
-            _tdm_packet_sent = true;
-            _tdm_trailer.node_id = _g_node_id;
-            pkt_send_packets(&_tdm_trailer);
-        } else if (radio_get_packet(&packet_len, _tdm_buffer)) {
+        if (radio_get_packet(&packet_len, _tdm_buffer)) {
             // it is not our turn to receive, so listen for incoming messages
             handle_received_packet(packet_len);
-        } else if (_tdm_current_slot == TDM_SYNC_SLOT(_tdm_slot_count) &&
-                   _tdm_is_base_node) {
+        } else if (_tdm_current_slot == _g_node_id && !_tdm_packet_sent &&
+                   !_tdm_is_in_silence_period) {
+            tdm_populate_trailer();
+            _tdm_packet_sent = true;
+            pkt_send_packets(&_tdm_trailer);
+        } else if (_tdm_is_base_node &&
+                   _tdm_current_slot == TDM_SYNC_SLOT(_tdm_slot_count)) {
             if (!_tdm_is_in_silence_period && !_tdm_packet_sent) {
                 _tdm_packet_sent = true;
+                PIN_CONFIG = true;
                 tdm_transmit_sync();
+                PIN_CONFIG = false;
             }
         }
     }

@@ -282,8 +282,8 @@ bool radio_transmit(uint8_t len, __xdata uint8_t* buf) __reentrant {
     radio_register_write(EZRADIOPRO_TRANSMIT_PACKET_LENGTH, len);
 
     n = len;
-    if (n > TX_FIFO_ALMOST_FULL_N) {
-        n = TX_FIFO_ALMOST_FULL_N;
+    if (n > RADIO_FIFO_SIZE) {
+        n = RADIO_FIFO_SIZE;
     }
 
     radio_write_tx_fifo(n, buf);
@@ -711,6 +711,7 @@ void Receiver_ISR() __interrupt(INTERRUPT_INT0) {
     // received valid packet
     if (status & EZRADIOPRO_IPKVALID) {
         _radio_t_packet_received = timer2_tick();
+        PIN_CONFIG = true;
         len = radio_register_read(EZRADIOPRO_RECEIVED_PACKET_LENGTH);
         if (len > RADIO_MAX_PACKET_LENGTH ||
             radio_partial_packet_length_ > len) {

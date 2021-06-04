@@ -4,6 +4,7 @@
 #include <stdint.h>
 
 struct tdm_trailer_s {
+    uint8_t sync_hops;
     uint8_t node_id;
 };
 
