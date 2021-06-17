@@ -54,7 +54,7 @@ volatile __bit radio_preamble_detected_;
 volatile uint16_t _radio_t_packet_received;
 __data uint8_t radio_rx_packet_length_;
 __data uint8_t radio_partial_packet_length_;
-__data uint8_t last_rssi_;
+__data uint8_t _radio_last_rssi;
 // currently selected frequency hopping channel
 __data uint8_t fhop_channel_;
 // preamble length in nibbles
@@ -616,6 +616,10 @@ inline static void radio_read_rx_fifo(uint8_t n, __xdata uint8_t* buffer) {
     NSS1 = 1;
 }
 
+uint8_t radio_current_rssi() {
+    return radio_register_read(EZRADIOPRO_RECEIVED_SIGNAL_STRENGTH_INDICATOR);
+}
+
 void radio_packet_timing_test() {
     __data uint8_t rate_index, len;
     for (rate_index = 8; rate_index < NUM_DATA_RATES; rate_index++) {
@@ -690,13 +694,13 @@ void Receiver_ISR() __interrupt(INTERRUPT_INT0) {
         radio_read_rx_fifo(RX_FIFO_ALMOST_FULL_N,
                            &radio_buffer_[radio_partial_packet_length_]);
         radio_partial_packet_length_ += RX_FIFO_ALMOST_FULL_N;
-        last_rssi_ =
+        _radio_last_rssi =
             radio_register_read(EZRADIOPRO_RECEIVED_SIGNAL_STRENGTH_INDICATOR);
     }
     // preamble detected. beginning of message reception
     if (status2 & EZRADIOPRO_IPREAVAL) {
         radio_preamble_detected_ = true;
-        last_rssi_ =
+        _radio_last_rssi =
             radio_register_read(EZRADIOPRO_RECEIVED_SIGNAL_STRENGTH_INDICATOR);
     }
     // invalid crc -> message content is trash

@@ -7,8 +7,8 @@
 #include "fifo.h"
 #include "radio.h"
 #include "tdm.h"
-#include "uart.h"
 #include "timer.h"
+#include "uart.h"
 
 __xdata uint8_t _pkt_buffer[PKT_BUFFER_SIZE];
 __pdata pkt_manager_t _pkt_manager;
@@ -17,18 +17,22 @@ void pkt_init() { memset(&_pkt_manager, 0, sizeof(_pkt_manager)); }
 
 void pkt_send_packets(struct tdm_trailer_s *trailer) {
     __data uint8_t i, size;
-    if (_pkt_manager.n_packets == 0) {
-        return;
-    }
-    size = _pkt_manager.sizes[0] + sizeof(struct tdm_trailer_s);
-    for (i = 1; i < _pkt_manager.n_packets; i++) {
-        if (size + _pkt_manager.sizes[i] > RADIO_MAX_PACKET_LENGTH) {
-            break;
+    if (_pkt_manager.n_packets > 0) {
+        size = _pkt_manager.sizes[0] + sizeof(struct tdm_trailer_s);
+        for (i = 1; i < _pkt_manager.n_packets; i++) {
+            if (size + _pkt_manager.sizes[i] > RADIO_MAX_PACKET_LENGTH) {
+                break;
+            }
+            size += _pkt_manager.sizes[i];
         }
-        size += _pkt_manager.sizes[i];
+        memcpy(_pkt_buffer + size - sizeof(struct tdm_trailer_s), trailer,
+               sizeof(struct tdm_trailer_s));
+    } else {
+        // transmit an empty packet to signal we are alive
+        size = sizeof(struct tdm_trailer_s);
+        memcpy(_pkt_buffer, trailer, size);
     }
-    memcpy(_pkt_buffer + size - sizeof(struct tdm_trailer_s), trailer,
-           sizeof(struct tdm_trailer_s));
+
     radio_transmit(size, _pkt_buffer);
     _pkt_manager.n_packets = 0;
 }
@@ -76,7 +80,7 @@ void pkt_update_buffer() {
         len = fifo_peek(UART_RX_FIFO, PKT_LEN_IDX);
         len += PKT_HEADER_LENGTH + 1 + PKT_CRC_LENGTH;
         if (fifo_peek(UART_RX_FIFO, len) == 0) {
-            pkt_handle_packet(len+1);
+            pkt_handle_packet(len + 1);
             return;
 
         } else {

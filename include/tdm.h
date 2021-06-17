@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#define TDM_MAX_RSSI_STATS 10
+
 struct tdm_trailer_s {
     uint8_t sync_hops;
     uint8_t node_id;

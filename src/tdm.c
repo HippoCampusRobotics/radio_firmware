@@ -7,6 +7,7 @@
 
 #include "board_hm_trp.h"
 #include "cfg.h"
+#include "hippolink.h"
 #include "pkt.h"
 #include "radio.h"
 #include "timer.h"
@@ -44,6 +45,10 @@
 inline static void tdm_extract_trailer(register uint8_t packet_len);
 inline void tdm_populate_trailer();
 
+extern __data uint8_t _radio_last_rssi;
+__pdata uint8_t _tdm_rssi_receive_stats[TDM_MAX_RSSI_STATS];
+__data uint8_t _tdm_rssi_noise;
+
 __bit _tdm_in_sync = false;
 __bit _tdm_config_pin_state = false;
 __bit _tdm_is_base_node;
@@ -77,6 +82,7 @@ __data struct tdm_pkt_timing_s {
 } _tdm_pkt_timing;
 
 void tdm_init() {
+    hippolink_init();
     _tdm_slot_count = TDM_SLOT_COUNT(_g_node_count);
     _tdm_current_slot = TDM_SYNC_SLOT(_tdm_slot_count);
     uint8_t data_rate = radio_get_data_rate();
@@ -111,9 +117,9 @@ void handle_received_packet(register uint8_t packet_len) {
         _tdm_t_now = timer2_tick();
         _tdm_t_last = _tdm_t_now;
         PIN_CONFIG = false;
-        dt = _tdm_t_now - radio_get_arrival_time();
-        _tdm_t_remaining = _tdm_pkt_timing.slot_ticks - 152 - dt -
-                           _tdm_pkt_timing.silence_ticks;
+        // dt = _tdm_t_now - radio_get_arrival_time();
+        _tdm_t_remaining =
+            _tdm_pkt_timing.slot_ticks - 158 - _tdm_pkt_timing.silence_ticks;
         _tdm_sync_received = true;
         _tdm_sync_hops = 1;
         _tdm_current_slot = TDM_SYNC_SLOT(_tdm_slot_count);
@@ -123,6 +129,9 @@ void handle_received_packet(register uint8_t packet_len) {
     } else if (packet_len && !_cfg_mode_active) {
         // HANDLE USER DATA
         uart_write_buffered(_tdm_buffer, packet_len);
+    }
+    if (_tdm_trailer.node_id < TDM_MAX_RSSI_STATS) {
+        _tdm_rssi_receive_stats[_tdm_trailer.node_id] = _radio_last_rssi;
     }
 }
 
@@ -186,6 +195,7 @@ inline void tdm_populate_trailer() {
 
 void tdm_run() {
     uint8_t i;
+    __bit send_rssi = true;
     __data uint8_t packet_len;
     __data uint16_t t_link_update;
     radio_set_mode_receive();
@@ -211,13 +221,19 @@ void tdm_run() {
             tdm_populate_trailer();
             _tdm_packet_sent = true;
             pkt_send_packets(&_tdm_trailer);
-        } else if (_tdm_is_base_node &&
-                   _tdm_current_slot == TDM_SYNC_SLOT(_tdm_slot_count)) {
-            if (!_tdm_is_in_silence_period && !_tdm_packet_sent) {
-                _tdm_packet_sent = true;
-                PIN_CONFIG = true;
-                tdm_transmit_sync();
-                PIN_CONFIG = false;
+            _tdm_rssi_noise = radio_current_rssi();
+            send_rssi = true;
+        } else if (_tdm_current_slot == TDM_SYNC_SLOT(_tdm_slot_count)) {
+            if (_tdm_is_base_node) {
+                if (!_tdm_is_in_silence_period && !_tdm_packet_sent) {
+                    _tdm_packet_sent = true;
+                    PIN_CONFIG = true;
+                    tdm_transmit_sync();
+                    PIN_CONFIG = false;
+                }
+            }
+            if (!_cfg_mode_active && send_rssi) {
+                send_rssi = hippolink_rssi_report();
             }
         }
     }

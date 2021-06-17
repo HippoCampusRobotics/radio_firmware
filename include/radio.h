@@ -31,6 +31,7 @@ bool radio_transmit_power_is_valid(uint8_t power);
 void radio_set_transmit_power(uint8_t power);
 bool radio_packet_received();
 bool radio_preamble_detected();
+uint8_t radio_current_rssi();
 bool radio_get_packet(uint8_t *length, __xdata uint8_t * __data buffer);
 uint16_t radio_get_arrival_time();
 bool radio_set_mode_receive();
