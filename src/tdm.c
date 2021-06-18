@@ -216,8 +216,8 @@ void tdm_run() {
         if (radio_get_packet(&packet_len, _tdm_buffer)) {
             // it is not our turn to receive, so listen for incoming messages
             handle_received_packet(packet_len);
-        } else if (_tdm_current_slot == _g_node_id && !_tdm_packet_sent &&
-                   !_tdm_is_in_silence_period) {
+        } else if (_tdm_current_slot == _g_node_id && _tdm_in_sync &&
+                   !_tdm_packet_sent && !_tdm_is_in_silence_period) {
             tdm_populate_trailer();
             _tdm_packet_sent = true;
             pkt_send_packets(&_tdm_trailer);
