@@ -23,6 +23,7 @@ AS=sdas8051 -jlocsp
 LD=sdcc
 INCLUDES:=-I$(INCLUDE_DIR)
 CFLAGS+=--opt-code-speed --std-sdcc99 --fomit-frame-pointer $(MEMORY_MODEL) $(INCLUDES)
+CFLAGS+=-D BUILD_DATE=\""$(shell date)"\" -D BUILD_COMMIT=\""$(shell git rev-parse --short HEAD)"\"
 DEPFLAGS:=-MM $(CFLAGS) 
 HEX=$(BIN_DIR)/firmware.ihx
 

@@ -5,7 +5,6 @@
 #include <stdio.h>
 #include <string.h>
 
-
 #include "flash.h"
 #include "radio.h"
 #include "timer.h"
@@ -58,6 +57,7 @@ inline static void cfg_cmd_handle_reboot();
 inline static void cfg_cmd_handle_exit();
 inline static void cfg_cmd_handle_save();
 inline static void cfg_cmd_handle_reset();
+inline static void cfg_cmd_handle_version();
 static void cfg_cmd_handle_load();
 
 cfg_param_t _cfg_params[CFG_PARAM_MAX];
@@ -227,8 +227,7 @@ void cfg_mode_fsm_update_char(register uint8_t c) {
                             putchar(c);
                         }
                     } else {
-                        _cfg_mode_active = false;
-                        _cfg_cmd_len = 0;
+                        cfg_mode_transition_silence_before();
                     }
                     break;
             }
@@ -321,6 +320,8 @@ void cfg_handle_cmd() {
         cfg_cmd_handle_reboot();
     } else if (!strcmp(_cfg_cmd, "EXIT")) {
         cfg_cmd_handle_exit();
+    } else if (!strcmp(_cfg_cmd, "VERSION")) {
+        cfg_cmd_handle_version();
     } else {
         cfg_cmd_err();
     }
@@ -392,4 +393,10 @@ static void cfg_cmd_handle_load() {
             printf("Value is invalid. Set to default.\n");
         }
     }
+}
+
+inline static void cfg_cmd_handle_version() {
+    printf("Date: %s\n", BUILD_DATE);
+    delay_millis(500);
+    printf("Commit: %s\n", BUILD_COMMIT);
 }

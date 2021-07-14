@@ -196,6 +196,7 @@ inline void tdm_populate_trailer() {
 void tdm_run() {
     uint8_t i;
     __bit send_rssi = true;
+    __data uint8_t tdm_counter = 0;
     __data uint8_t packet_len;
     __data uint16_t t_link_update;
     radio_set_mode_receive();
@@ -222,6 +223,7 @@ void tdm_run() {
             _tdm_packet_sent = true;
             pkt_send_packets(&_tdm_trailer);
             _tdm_rssi_noise = radio_current_rssi();
+            tdm_counter = 0;
             send_rssi = true;
         } else if (_tdm_current_slot == TDM_SYNC_SLOT(_tdm_slot_count)) {
             if (_tdm_is_base_node) {
@@ -234,6 +236,10 @@ void tdm_run() {
             }
             if (!_cfg_mode_active && send_rssi) {
                 send_rssi = hippolink_rssi_report();
+                tdm_counter++;
+                if (tdm_counter >= TDM_MAX_RSSI_STATS) {
+                    send_rssi = false;
+                }
             }
         }
     }
