@@ -51,10 +51,8 @@ bool hippolink_rssi_report() {
         return false;
     }
     _hippolink_node_index++;
-    if (_hippolink_node_index == _g_node_id) {
-        _hippolink_node_index++;
-    }
-    if (_hippolink_node_index >= _g_node_count) {
+    if (_hippolink_node_index >= _g_node_count ||
+        _hippolink_node_index >= TDM_MAX_RSSI_STATS) {
         _hippolink_node_index = 0;
     }
     hippolink_fill_rssi_report();
@@ -62,7 +60,6 @@ bool hippolink_rssi_report() {
     uart_write_buffered(_buffer, full_packet_size);
     _tdm_rssi_receive_stats[_hippolink_node_index] = 0;
     return true;
-
 }
 
 static void hippolink_fill_rssi_report() {

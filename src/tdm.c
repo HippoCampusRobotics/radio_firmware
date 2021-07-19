@@ -237,7 +237,8 @@ void tdm_run() {
             if (!_cfg_mode_active && send_rssi) {
                 send_rssi = hippolink_rssi_report();
                 tdm_counter++;
-                if (tdm_counter >= TDM_MAX_RSSI_STATS) {
+                if (tdm_counter >= TDM_MAX_RSSI_STATS ||
+                    tdm_counter >= _g_node_count) {
                     send_rssi = false;
                 }
             }
