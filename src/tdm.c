@@ -13,6 +13,68 @@
 #include "timer.h"
 #include "uart.h"
 
+#define TDM_0_REMAINING 495
+#define TDM_1_REMAINING 488
+#define TDM_2_REMAINING 480
+#define TDM_3_REMAINING 472
+#define TDM_4_REMAINING 463
+#define TDM_5_REMAINING 455
+#define TDM_6_REMAINING 447
+#define TDM_7_REMAINING 439
+#define TDM_8_REMAINING 431
+#define TDM_9_REMAINING 422
+#define TDM_10_REMAINING 414
+#define TDM_11_REMAINING 406
+#define TDM_12_REMAINING 398
+#define TDM_13_REMAINING 389
+#define TDM_14_REMAINING 381
+#define TDM_15_REMAINING 373
+#define TDM_16_REMAINING 365
+#define TDM_17_REMAINING 356
+#define TDM_18_REMAINING 348
+#define TDM_19_REMAINING 340
+#define TDM_20_REMAINING 332
+#define TDM_21_REMAINING 323
+#define TDM_22_REMAINING 315
+#define TDM_23_REMAINING 307
+#define TDM_24_REMAINING 299
+#define TDM_25_REMAINING 290
+#define TDM_26_REMAINING 282
+#define TDM_27_REMAINING 274
+#define TDM_28_REMAINING 266
+#define TDM_29_REMAINING 258
+#define TDM_30_REMAINING 249
+#define TDM_31_REMAINING 241
+#define TDM_32_REMAINING 233
+#define TDM_33_REMAINING 225
+#define TDM_34_REMAINING 216
+#define TDM_35_REMAINING 208
+#define TDM_36_REMAINING 200
+#define TDM_37_REMAINING 192
+#define TDM_38_REMAINING 183
+#define TDM_39_REMAINING 175
+#define TDM_40_REMAINING 167
+#define TDM_41_REMAINING 159
+#define TDM_42_REMAINING 150
+#define TDM_43_REMAINING 142
+#define TDM_44_REMAINING 134
+#define TDM_45_REMAINING 126
+#define TDM_46_REMAINING 117
+#define TDM_47_REMAINING 109
+#define TDM_48_REMAINING 101
+#define TDM_49_REMAINING 93
+#define TDM_50_REMAINING 84
+#define TDM_51_REMAINING 83
+#define TDM_52_REMAINING 75
+#define TDM_53_REMAINING 66
+#define TDM_54_REMAINING 58
+#define TDM_55_REMAINING 50
+#define TDM_56_REMAINING 42
+#define TDM_57_REMAINING 33
+#define TDM_58_REMAINING 25
+#define TDM_59_REMAINING 17
+#define TDM_60_REMAINING 9
+
 #define TDM_SYNC_SLOT(slot_count) (slot_count - 1)
 #define TDM_SLOT_COUNT(node_count) (node_count + 1)
 #define TDM_NODE_COUNT(slot_count) (slot_count - 1)
@@ -104,6 +166,197 @@ inline static void tdm_extract_trailer(register uint8_t packet_len) {
     memcpy(&_tdm_trailer, _tdm_buffer + packet_len, sizeof(_tdm_trailer));
 }
 
+inline static void tdm_remaining(register uint8_t len) {
+    switch (len) {
+        case 0:
+            _tdm_t_remaining = TDM_0_REMAINING;
+            break;
+        case 1:
+            _tdm_t_remaining = TDM_1_REMAINING;
+            break;
+        case 2:
+            _tdm_t_remaining = TDM_2_REMAINING;
+            break;
+        case 3:
+            _tdm_t_remaining = TDM_3_REMAINING;
+            break;
+        case 4:
+            _tdm_t_remaining = TDM_4_REMAINING;
+            break;
+        case 5:
+            _tdm_t_remaining = TDM_5_REMAINING;
+            break;
+        case 6:
+            _tdm_t_remaining = TDM_6_REMAINING;
+            break;
+        case 7:
+            _tdm_t_remaining = TDM_7_REMAINING;
+            break;
+        case 8:
+            _tdm_t_remaining = TDM_8_REMAINING;
+            break;
+        case 9:
+            _tdm_t_remaining = TDM_9_REMAINING;
+            break;
+        case 10:
+            _tdm_t_remaining = TDM_10_REMAINING;
+            break;
+        case 11:
+            _tdm_t_remaining = TDM_11_REMAINING;
+            break;
+        case 12:
+            _tdm_t_remaining = TDM_12_REMAINING;
+            break;
+        case 13:
+            _tdm_t_remaining = TDM_13_REMAINING;
+            break;
+        case 14:
+            _tdm_t_remaining = TDM_14_REMAINING;
+            break;
+        case 15:
+            _tdm_t_remaining = TDM_15_REMAINING;
+            break;
+        case 16:
+            _tdm_t_remaining = TDM_16_REMAINING;
+            break;
+        case 17:
+            _tdm_t_remaining = TDM_17_REMAINING;
+            break;
+        case 18:
+            _tdm_t_remaining = TDM_18_REMAINING;
+            break;
+        case 19:
+            _tdm_t_remaining = TDM_19_REMAINING;
+            break;
+        case 20:
+            _tdm_t_remaining = TDM_20_REMAINING;
+            break;
+        case 21:
+            _tdm_t_remaining = TDM_21_REMAINING;
+            break;
+        case 22:
+            _tdm_t_remaining = TDM_22_REMAINING;
+            break;
+        case 23:
+            _tdm_t_remaining = TDM_23_REMAINING;
+            break;
+        case 24:
+            _tdm_t_remaining = TDM_24_REMAINING;
+            break;
+        case 25:
+            _tdm_t_remaining = TDM_25_REMAINING;
+            break;
+        case 26:
+            _tdm_t_remaining = TDM_26_REMAINING;
+            break;
+        case 27:
+            _tdm_t_remaining = TDM_27_REMAINING;
+            break;
+        case 28:
+            _tdm_t_remaining = TDM_28_REMAINING;
+            break;
+        case 29:
+            _tdm_t_remaining = TDM_29_REMAINING;
+            break;
+        case 30:
+            _tdm_t_remaining = TDM_30_REMAINING;
+            break;
+        case 31:
+            _tdm_t_remaining = TDM_31_REMAINING;
+            break;
+        case 32:
+            _tdm_t_remaining = TDM_32_REMAINING;
+            break;
+        case 33:
+            _tdm_t_remaining = TDM_33_REMAINING;
+            break;
+        case 34:
+            _tdm_t_remaining = TDM_34_REMAINING;
+            break;
+        case 35:
+            _tdm_t_remaining = TDM_35_REMAINING;
+            break;
+        case 36:
+            _tdm_t_remaining = TDM_36_REMAINING;
+            break;
+        case 37:
+            _tdm_t_remaining = TDM_37_REMAINING;
+            break;
+        case 38:
+            _tdm_t_remaining = TDM_38_REMAINING;
+            break;
+        case 39:
+            _tdm_t_remaining = TDM_39_REMAINING;
+            break;
+        case 40:
+            _tdm_t_remaining = TDM_40_REMAINING;
+            break;
+        case 41:
+            _tdm_t_remaining = TDM_41_REMAINING;
+            break;
+        case 42:
+            _tdm_t_remaining = TDM_42_REMAINING;
+            break;
+        case 43:
+            _tdm_t_remaining = TDM_43_REMAINING;
+            break;
+        case 44:
+            _tdm_t_remaining = TDM_44_REMAINING;
+            break;
+        case 45:
+            _tdm_t_remaining = TDM_45_REMAINING;
+            break;
+        case 46:
+            _tdm_t_remaining = TDM_46_REMAINING;
+            break;
+        case 47:
+            _tdm_t_remaining = TDM_47_REMAINING;
+            break;
+        case 48:
+            _tdm_t_remaining = TDM_48_REMAINING;
+            break;
+        case 49:
+            _tdm_t_remaining = TDM_49_REMAINING;
+            break;
+        case 50:
+            _tdm_t_remaining = TDM_50_REMAINING;
+            break;
+        case 51:
+            _tdm_t_remaining = TDM_51_REMAINING;
+            break;
+        case 52:
+            _tdm_t_remaining = TDM_52_REMAINING;
+            break;
+        case 53:
+            _tdm_t_remaining = TDM_53_REMAINING;
+            break;
+        case 54:
+            _tdm_t_remaining = TDM_54_REMAINING;
+            break;
+        case 55:
+            _tdm_t_remaining = TDM_55_REMAINING;
+            break;
+        case 56:
+            _tdm_t_remaining = TDM_56_REMAINING;
+            break;
+        case 57:
+            _tdm_t_remaining = TDM_57_REMAINING;
+            break;
+        case 58:
+            _tdm_t_remaining = TDM_58_REMAINING;
+            break;
+        case 59:
+            _tdm_t_remaining = TDM_59_REMAINING;
+            break;
+        case 60:
+            _tdm_t_remaining = TDM_60_REMAINING;
+            break;
+        default:
+            _tdm_t_remaining = TDM_60_REMAINING;
+            break;
+    }
+}
+
 void handle_received_packet(register uint8_t packet_len) {
     __data uint16_t dt;
     packet_len -= sizeof(_tdm_trailer);
@@ -118,8 +371,7 @@ void handle_received_packet(register uint8_t packet_len) {
         _tdm_t_last = _tdm_t_now;
         PIN_CONFIG = false;
         // dt = _tdm_t_now - radio_get_arrival_time();
-        _tdm_t_remaining =
-            _tdm_pkt_timing.slot_ticks - 158 - _tdm_pkt_timing.silence_ticks;
+        tdm_remaining(packet_len + sizeof(_tdm_trailer));
         _tdm_sync_received = true;
         _tdm_sync_hops = 1;
         _tdm_current_slot = TDM_SYNC_SLOT(_tdm_slot_count);
