@@ -13,6 +13,12 @@
 #include "timer.h"
 #include "uart.h"
 
+#define TDM_TICKS_PER_BYTE_64 8
+
+#define TDM_BUFFER_TICKS 125
+#define TDM_SLOT_TICKS 762
+#define TDM_TICKS_P_BYTE (TDM_TICKS_PER_BYTE_64)
+
 #define TDM_0_REMAINING 495
 #define TDM_1_REMAINING 488
 #define TDM_2_REMAINING 480
@@ -135,30 +141,10 @@ extern __data uint8_t _g_node_count;
 extern uint8_t radio_register_read(uint8_t reg);
 __xdata uint8_t _tdm_buffer[RADIO_MAX_PACKET_LENGTH];
 
-__data struct tdm_pkt_timing_s {
-    uint8_t ticks_per_byte;
-    uint16_t min_latency;
-    uint16_t max_latency;
-    uint16_t silence_ticks;
-    uint16_t slot_ticks;
-} _tdm_pkt_timing;
-
 void tdm_init() {
     hippolink_init();
     _tdm_slot_count = TDM_SLOT_COUNT(_g_node_count);
     _tdm_current_slot = TDM_SYNC_SLOT(_tdm_slot_count);
-    uint8_t data_rate = radio_get_data_rate();
-    _tdm_pkt_timing.ticks_per_byte = TDM_TICKS_PER_BYTE(data_rate);
-    _tdm_pkt_timing.min_latency =
-        ((_g_radio_preamble_length + 1) / 2 + TDM_OVERHEAD_BYTES) *
-            _tdm_pkt_timing.ticks_per_byte +
-        TDM_TX_DELAY_TICKS;
-    _tdm_pkt_timing.max_latency =
-        _tdm_pkt_timing.min_latency +
-        _tdm_pkt_timing.ticks_per_byte * RADIO_MAX_PACKET_LENGTH;
-    _tdm_pkt_timing.silence_ticks = _tdm_pkt_timing.min_latency;
-    _tdm_pkt_timing.slot_ticks =
-        _tdm_pkt_timing.silence_ticks + _tdm_pkt_timing.max_latency;
     _tdm_is_base_node = (_g_node_id == TDM_BASE_NODE);
 }
 
@@ -358,7 +344,6 @@ inline static void tdm_remaining(register uint8_t len) {
 }
 
 void handle_received_packet(register uint8_t packet_len) {
-    __data uint16_t dt;
     packet_len -= sizeof(_tdm_trailer);
     tdm_extract_trailer(packet_len);
     if (TDM_IS_SYNC(_tdm_trailer.node_id)) {
@@ -370,7 +355,6 @@ void handle_received_packet(register uint8_t packet_len) {
         _tdm_t_now = timer2_tick();
         _tdm_t_last = _tdm_t_now;
         PIN_CONFIG = false;
-        // dt = _tdm_t_now - radio_get_arrival_time();
         tdm_remaining(packet_len + sizeof(_tdm_trailer));
         _tdm_sync_received = true;
         _tdm_sync_hops = 1;
@@ -398,7 +382,7 @@ void tdm_update_slot() {
     _tdm_t_last = _tdm_t_now;
     if (dt >= _tdm_t_remaining) {
         dt -= _tdm_t_remaining;
-        _tdm_t_remaining = _tdm_pkt_timing.slot_ticks - dt;
+        _tdm_t_remaining = TDM_SLOT_TICKS - dt;
         if (_tdm_in_sync) {
             _tdm_packet_sent = false;
             TDM_SWITCH_NEXT_SLOT(_tdm_current_slot, _tdm_slot_count);
@@ -409,8 +393,7 @@ void tdm_update_slot() {
     } else {
         _tdm_t_remaining -= dt;
     }
-    if (_tdm_t_remaining + _tdm_pkt_timing.silence_ticks <
-        _tdm_pkt_timing.slot_ticks) {
+    if (_tdm_t_remaining + TDM_BUFFER_TICKS < TDM_SLOT_TICKS) {
         _tdm_is_in_silence_period = false;
     } else {
         _tdm_is_in_silence_period = true;
@@ -454,7 +437,7 @@ void tdm_run() {
     radio_set_mode_receive();
     _tdm_t_now = timer2_tick();
     _tdm_t_last = t_link_update = _tdm_t_now;
-    _tdm_t_remaining = _tdm_pkt_timing.slot_ticks;
+    _tdm_t_remaining = TDM_SLOT_TICKS;
     _tdm_t_next_slot = _tdm_t_now + _tdm_t_remaining;
     _tdm_in_sync = _tdm_is_base_node;
     while (true) {
